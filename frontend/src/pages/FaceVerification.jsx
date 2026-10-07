@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -6,6 +7,7 @@ function FaceVerification() {
   const videoRef = useRef(null);
 
   const [cameraError, setCameraError] = useState("");
+  const [cameraReady, setCameraReady] = useState(false);
 
   const voter = JSON.parse(
     sessionStorage.getItem("voter")
@@ -21,12 +23,19 @@ function FaceVerification() {
           audio: false,
         });
 
-        videoRef.current.srcObject = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+
+        setCameraReady(true);
       } catch (error) {
         console.error("Camera error:", error);
+
         setCameraError(
           "Unable to access camera. Please allow camera permission."
         );
+
+        setCameraReady(false);
       }
     };
 
@@ -40,15 +49,18 @@ function FaceVerification() {
   }, []);
 
   const handleFaceVerification = () => {
-    // Temporary demo verification
-    navigate("/voting");
+    // Temporary demo verification.
+    // Later we can add a non-identifying face-presence check here.
+    navigate("/fingerprint");
   };
 
   return (
     <div className="screen">
-      <div className="success-icon">✓</div>
 
-      <h1>FINGERPRINT VERIFIED</h1>
+      <div className="success-icon">
+        ✓
+      </div>
+      <h1>RFID VERIFIED</h1>
 
       <p className="welcome">
         Thank you, {voter?.name}!
@@ -76,10 +88,11 @@ function FaceVerification() {
 
       <button
         onClick={handleFaceVerification}
-        disabled={!!cameraError}
+        disabled={!cameraReady}
       >
-        VERIFY FACE
+        {cameraReady ? "VERIFY FACE" : "STARTING CAMERA..."}
       </button>
+
     </div>
   );
 }

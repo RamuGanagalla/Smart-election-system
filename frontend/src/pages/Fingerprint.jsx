@@ -1,38 +1,54 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 
-
 function Fingerprint() {
   const navigate = useNavigate();
   const [fingerprintUid, setFingerprintUid] = useState("");
+  const [verifying, setVerifying] = useState(false);
 
   const voter = JSON.parse(
-    sessionStorage.getItem("voter")
+    sessionStorage.getItem("voter") || "null"
   );
 
-  const handleFingerprint = async() => {
-    try{
-      const response = await fetch("http://localhost:3000/api/voters/verify-fingerprint", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          voterId: voter.voterId,
-          fingerprintTemplate: fingerprintUid
-        })
-      });
+  const handleFingerprint = async () => {
+    if (!voter?.voterId) {
+      alert("Voter information not found. Please start again.");
+      navigate("/");
+      return;
+    }
+
+    try {
+      setVerifying(true);
+
+      const response = await fetch(
+        "http://localhost:3000/api/voters/verify-fingerprint",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            voterId: voter.voterId,
+            fingerprintTemplate: fingerprintUid,
+          }),
+        }
+      );
 
       const data = await response.json();
 
-      if (!data.success) {
-        alert(data.message);
+      if (!response.ok || !data.success) {
+        alert(data.message || "Fingerprint verification failed.");
         return;
       }
 
-      navigate("/face");
+      console.log("Fingerprint verified:", data);
+
+      navigate("/confirmation");
     } catch (error) {
+      console.error(error);
       alert("Unable to connect to the server.");
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -43,7 +59,7 @@ function Fingerprint() {
         ✓
       </div>
 
-      <h1>RFID VERIFIED</h1>
+      <h1>FACE VERIFIED</h1>
 
       <p className="welcome">
         Welcome, {voter?.name}!
@@ -58,6 +74,7 @@ function Fingerprint() {
       <div className="fingerprint">
         🖐️
       </div>
+
       <input
         type="text"
         className="rfid-input"
@@ -65,9 +82,12 @@ function Fingerprint() {
         value={fingerprintUid}
         onChange={(e) => setFingerprintUid(e.target.value)}
       />
-      <button onClick={handleFingerprint}
-      disabled={!fingerprintUid.trim()}>
-        SIMULATE FINGERPRINT
+
+      <button
+        onClick={handleFingerprint}
+        disabled={!fingerprintUid.trim() || verifying}
+      >
+        {verifying ? "VERIFYING..." : "SIMULATE FINGERPRINT"}
       </button>
 
     </div>

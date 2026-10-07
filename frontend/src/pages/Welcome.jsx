@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -5,8 +6,13 @@ function Welcome() {
   const navigate = useNavigate();
 
   const [rfid, setRfid] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleVerifyRFID = async () => {
+    if (!rfid.trim()) return;
+
+    setLoading(true);
+
     try {
       const response = await fetch(
         "http://localhost:3000/api/voters/verify-rfid",
@@ -16,7 +22,8 @@ function Welcome() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            rfidUid: rfid,
+            rfidUid: rfid.trim(),
+            electionId: "EL-2026-001",
           }),
         }
       );
@@ -26,20 +33,27 @@ function Welcome() {
       if (response.ok) {
         console.log("RFID verified:", data);
 
-        // Temporarily store voter information
+        // Store only the voter information needed by the frontend
         sessionStorage.setItem(
           "voter",
           JSON.stringify(data.voter)
         );
 
-        navigate("/fingerprint");
+        // Store the current election separately
+        sessionStorage.setItem(
+          "electionId",
+          "EL-2026-001"
+        );
+
+        navigate("/face");
       } else {
         alert(data.message);
       }
-
     } catch (error) {
-      console.error(error);
+      console.error("RFID verification error:", error);
       alert("Unable to connect to the server.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -70,10 +84,10 @@ function Welcome() {
       />
 
       <button
-        disabled={!rfid.trim()}
+        disabled={!rfid.trim() || loading}
         onClick={handleVerifyRFID}
       >
-        VERIFY RFID
+        {loading ? "VERIFYING..." : "VERIFY RFID"}
       </button>
 
     </div>

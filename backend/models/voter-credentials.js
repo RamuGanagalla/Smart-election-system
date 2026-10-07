@@ -1,40 +1,38 @@
 const mongoose = require("mongoose");
 
-const voterSchema = new mongoose.Schema(
+const voterCredentialSchema = new mongoose.Schema(
   {
     voterId: {
       type: String,
       required: true,
       unique: true,
-    },
-
-    name: {
-      type: String,
-      required: true,
+      ref: "VoterProfile",
     },
 
     rfidUid: {
       type: String,
       required: true,
       unique: true,
+      trim: true,
     },
 
     fingerprintTemplate: {
       type: String,
+      default: null,
     },
 
     faceTemplate: {
       type: String,
-    },
-
-    hasVoted: {
-      type: Boolean,
-      default: false,
+      default: null,
     },
   },
   {
     timestamps: true,
+    collection: "voter_credentials",
   }
 );
 
-module.exports = mongoose.model("Voter", voterSchema);
+module.exports = mongoose.model(
+  "VoterCredential",
+  voterCredentialSchema
+);

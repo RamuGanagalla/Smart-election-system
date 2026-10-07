@@ -1,38 +1,66 @@
+
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 function Confirmation() {
   const navigate = useNavigate();
 
+  const [submitting, setSubmitting] = useState(false);
+
   const candidate = JSON.parse(
     sessionStorage.getItem("selectedCandidate")
   );
 
+  const voter = JSON.parse(
+    sessionStorage.getItem("voter")
+  );
+
+  const electionId = sessionStorage.getItem("electionId");
+
   const confirmVote = async () => {
-  try {
-    const voter = JSON.parse(
-      sessionStorage.getItem("voter")
-    );
-
-    const response = await fetch(
-      `http://localhost:3000/api/voters/update-vote-status/${voter.voterId}`,
-      {
-        method: "PUT",
-      }
-    );
-
-    const data = await response.json();
-
-    if (response.ok) {
-      console.log("Vote status updated:", data);
-      navigate("/success");
-    } else {
-      alert(data.message);
+    if (!voter || !candidate || !electionId) {
+      alert("Voting information is missing.");
+      return;
     }
-  } catch (error) {
-    console.error(error);
-    alert("Unable to connect to the server.");
-  }
-};
+
+    try {
+      setSubmitting(true);
+
+      const response = await fetch(
+        "http://localhost:3000/api/votes",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            voterId: voter.voterId,
+            electionId: electionId,
+            candidateId: candidate.candidateId,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        console.log("Vote cast successfully:", data);
+
+        // Clear temporary voting data
+        sessionStorage.removeItem("selectedCandidate");
+        sessionStorage.removeItem("electionId");
+
+        navigate("/success");
+      } else {
+        alert(data.message || "Unable to cast vote.");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Unable to connect to the server.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="screen">
@@ -64,6 +92,7 @@ function Confirmation() {
         <button
           className="cancel-button"
           onClick={() => navigate("/voting")}
+          disabled={submitting}
         >
           CHANGE VOTE
         </button>
@@ -71,8 +100,9 @@ function Confirmation() {
         <button
           className="confirm-button"
           onClick={confirmVote}
+          disabled={submitting}
         >
-          CONFIRM VOTE
+          {submitting ? "CASTING VOTE..." : "CONFIRM VOTE"}
         </button>
 
       </div>
