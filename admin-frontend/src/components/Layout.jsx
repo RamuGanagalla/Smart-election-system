@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard, Vote, Users, UserRound, BarChart3, Settings,
+  LayoutDashboard, Vote, Users, UserRound, BarChart3,
   LogOut, Search, Menu, X, ShieldCheck
 } from "lucide-react";
 import { useState } from "react";
@@ -12,7 +12,6 @@ const navItems = [
   { label: "Voters", path: "/voters", icon: Users },
   { label: "Candidates", path: "/candidates", icon: UserRound },
   { label: "Reports", path: "/reports", icon: BarChart3 },
-  { label: "Settings", path: "/settings", icon: Settings },
 ];
 
 export default function Layout() {

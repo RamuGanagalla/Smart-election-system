@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -23,7 +22,6 @@ function Welcome() {
           },
           body: JSON.stringify({
             rfidUid: rfid.trim(),
-            electionId: "EL-2026-001",
           }),
         }
       );
@@ -33,16 +31,21 @@ function Welcome() {
       if (response.ok) {
         console.log("RFID verified:", data);
 
-        // Store only the voter information needed by the frontend
+        // Store voter information
         sessionStorage.setItem(
           "voter",
           JSON.stringify(data.voter)
         );
 
-        // Store the current election separately
+        // Store the election returned by the backend
         sessionStorage.setItem(
           "electionId",
-          "EL-2026-001"
+          data.election.electionId
+        );
+
+        sessionStorage.setItem(
+          "election",
+          JSON.stringify(data.election)
         );
 
         navigate("/face");

@@ -267,6 +267,41 @@ const completeElection = async (req, res) => {
     });
   }
 };
+const getActiveElection = async (req, res) => {
+  try {
+    const election = await Election.findOne({
+      status: "active",
+    }).sort({
+      startDate: -1,
+    });
+
+    if (!election) {
+      return res.status(404).json({
+        success: false,
+        message: "No active election is currently running",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      election: {
+        electionId: election.electionId,
+        title: election.title,
+        description: election.description,
+        startDate: election.startDate,
+        endDate: election.endDate,
+        status: election.status,
+      },
+    });
+  } catch (error) {
+    console.error("Get active election error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching active election",
+    });
+  }
+};
 module.exports = {
   createElection,
   getElections,
@@ -274,4 +309,5 @@ module.exports = {
   updateElection,
   completeElection,
   activateElection,
+  getActiveElection,
 };  

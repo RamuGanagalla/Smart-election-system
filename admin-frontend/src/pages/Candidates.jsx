@@ -390,7 +390,7 @@ export default function Candidates() {
       if (!response.ok || !data.success) {
         throw new Error(
           data.message ||
-            "Failed to update candidate"
+          "Failed to update candidate"
         );
       }
 
@@ -410,7 +410,7 @@ export default function Candidates() {
 
       setError(
         err.message ||
-          "Unable to update candidate"
+        "Unable to update candidate"
       );
     } finally {
       setSubmitting(false);
@@ -449,7 +449,7 @@ export default function Candidates() {
       if (!response.ok || !data.success) {
         throw new Error(
           data.message ||
-            "Failed to delete candidate"
+          "Failed to delete candidate"
         );
       }
 
@@ -466,7 +466,7 @@ export default function Candidates() {
 
       setError(
         err.message ||
-          "Unable to delete candidate"
+        "Unable to delete candidate"
       );
     }
   };
@@ -688,7 +688,7 @@ export default function Candidates() {
             (candidate) => {
               const votes =
                 voteCounts[
-                  candidate.candidateId
+                candidate.candidateId
                 ] || 0;
 
               return (
@@ -697,7 +697,10 @@ export default function Candidates() {
                   key={candidate.candidateId}
                 >
                   {/* TOP */}
-                  <div className="candidate-top">
+                  <div
+                    className="candidate-top"
+                    style={{ position: "relative" }}
+                  >
                     <div className="candidate-symbol-big">
                       {candidate.symbol || "?"}
                     </div>
@@ -718,93 +721,93 @@ export default function Candidates() {
 
                     {openMenu ===
                       candidate.candidateId && (
-                      <div
-                        className="action-menu"
-                        style={{
-                          position:
-                            "absolute",
-                          right: "0",
-                          top: "42px",
-                          zIndex: 20,
-                          minWidth: "150px",
-                          background:
-                            "#ffffff",
-                          border:
-                            "1px solid #e5e7eb",
-                          borderRadius:
-                            "10px",
-                          boxShadow:
-                            "0 10px 25px rgba(0,0,0,0.12)",
-                          padding: "6px",
-                        }}
-                      >
-                        <button
-                          type="button"
-                          onClick={() =>
-                            openEditModal(
-                              candidate
-                            )
-                          }
+                        <div
+                          className="action-menu"
                           style={{
-                            width: "100%",
-                            display:
-                              "flex",
-                            alignItems:
-                              "center",
-                            gap: "8px",
-                            padding:
-                              "9px 10px",
-                            border:
-                              "none",
+                            position:
+                              "absolute",
+                            right: "0",
+                            top: "42px",
+                            zIndex: 20,
+                            minWidth: "150px",
                             background:
-                              "transparent",
-                            cursor:
-                              "pointer",
+                              "#ffffff",
+                            border:
+                              "1px solid #e5e7eb",
                             borderRadius:
-                              "7px",
+                              "10px",
+                            boxShadow:
+                              "0 10px 25px rgba(0,0,0,0.12)",
+                            padding: "6px",
                           }}
                         >
-                          <Pencil
-                            size={15}
-                          />
-                          Edit
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openEditModal(
+                                candidate
+                              )
+                            }
+                            style={{
+                              width: "100%",
+                              display:
+                                "flex",
+                              alignItems:
+                                "center",
+                              gap: "8px",
+                              padding:
+                                "9px 10px",
+                              border:
+                                "none",
+                              background:
+                                "transparent",
+                              cursor:
+                                "pointer",
+                              borderRadius:
+                                "7px",
+                            }}
+                          >
+                            <Pencil
+                              size={15}
+                            />
+                            Edit
+                          </button>
 
-                        <button
-                          type="button"
-                          onClick={() =>
-                            deleteCandidate(
-                              candidate.candidateId
-                            )
-                          }
-                          style={{
-                            width: "100%",
-                            display:
-                              "flex",
-                            alignItems:
-                              "center",
-                            gap: "8px",
-                            padding:
-                              "9px 10px",
-                            border:
-                              "none",
-                            background:
-                              "transparent",
-                            color:
-                              "#dc2626",
-                            cursor:
-                              "pointer",
-                            borderRadius:
-                              "7px",
-                          }}
-                        >
-                          <Trash2
-                            size={15}
-                          />
-                          Delete
-                        </button>
-                      </div>
-                    )}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              deleteCandidate(
+                                candidate.candidateId
+                              )
+                            }
+                            style={{
+                              width: "100%",
+                              display:
+                                "flex",
+                              alignItems:
+                                "center",
+                              gap: "8px",
+                              padding:
+                                "9px 10px",
+                              border:
+                                "none",
+                              background:
+                                "transparent",
+                              color:
+                                "#dc2626",
+                              cursor:
+                                "pointer",
+                              borderRadius:
+                                "7px",
+                            }}
+                          >
+                            <Trash2
+                              size={15}
+                            />
+                            Delete
+                          </button>
+                        </div>
+                      )}
                   </div>
 
                   {/* NAME */}
@@ -877,11 +880,10 @@ export default function Candidates() {
                     <span>
                       {loadingVotes
                         ? "..."
-                        : `${votes} vote${
-                            votes !== 1
-                              ? "s"
-                              : ""
-                          }`}
+                        : `${votes} vote${votes !== 1
+                          ? "s"
+                          : ""
+                        }`}
                     </span>
 
                     <button

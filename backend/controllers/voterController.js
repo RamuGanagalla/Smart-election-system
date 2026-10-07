@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const VoterProfile = require("../models/voter-profile");
 const VoterCredential = require("../models/voter-credentials");
 const VoterStatus = require("../models/voter-status");
+const Election = require("../models/election");
 
 // Generate HMAC for voter status
 const generateStatusHash = (voterId, electionId, hasVoted) => {
@@ -376,9 +377,10 @@ const deleteVoter = async (req, res) => {
 
 
 // Verify RFID
+// Verify RFID
 const verifyRFID = async (req, res) => {
   try {
-    const { rfidUid, electionId } = req.body;
+    const { rfidUid } = req.body;
 
     if (!rfidUid) {
       return res.status(400).json({
@@ -387,6 +389,19 @@ const verifyRFID = async (req, res) => {
       });
     }
 
+    // Get the active election from MongoDB
+    const activeElection = await Election.findOne({
+      status: "active",
+    }).sort({ startDate: -1 });
+
+    if (!activeElection) {
+      return res.status(404).json({
+        success: false,
+        message: "No active election is currently available",
+      });
+    }
+
+    // Find voter credentials using RFID
     const credentials = await VoterCredential.findOne({
       rfidUid,
     });
@@ -398,6 +413,7 @@ const verifyRFID = async (req, res) => {
       });
     }
 
+    // Find voter profile
     const profile = await VoterProfile.findOne({
       voterId: credentials.voterId,
     });
@@ -409,45 +425,58 @@ const verifyRFID = async (req, res) => {
       });
     }
 
-    // Check voting status when election ID is supplied
-    if (electionId) {
-      const voterStatus = await VoterStatus.findOne({
-        voterId: credentials.voterId,
-        electionId,
+    // Find voter status for the active election
+    const voterStatus = await VoterStatus.findOne({
+      voterId: credentials.voterId,
+      electionId: activeElection.electionId,
+    });
+
+    if (!voterStatus) {
+      return res.status(403).json({
+        success: false,
+        message: "Voter is not registered for the active election",
       });
+    }
 
-      if (voterStatus) {
-        const expectedHash = generateStatusHash(
-          credentials.voterId,
-          electionId,
-          voterStatus.hasVoted
-        );
+    // Verify voter status integrity
+    const expectedHash = generateStatusHash(
+      credentials.voterId,
+      activeElection.electionId,
+      voterStatus.hasVoted
+    );
 
-        if (expectedHash !== voterStatus.statusHash) {
-          return res.status(403).json({
-            success: false,
-            message: "Voter status integrity verification failed",
-          });
-        }
+    if (expectedHash !== voterStatus.statusHash) {
+      return res.status(403).json({
+        success: false,
+        message: "Voter status integrity verification failed",
+      });
+    }
 
-        if (voterStatus.hasVoted) {
-          return res.status(403).json({
-            success: false,
-            message: "This voter has already cast their vote",
-          });
-        }
-      }
+    // Prevent duplicate voting
+    if (voterStatus.hasVoted) {
+      return res.status(403).json({
+        success: false,
+        message: "This voter has already cast their vote",
+      });
     }
 
     res.status(200).json({
       success: true,
       message: "RFID verified successfully",
+
       voter: {
         voterId: profile.voterId,
         name: profile.name,
       },
-    });
 
+      // Real election from MongoDB
+      election: {
+        electionId: activeElection.electionId,
+        title: activeElection.title,
+        startDate: activeElection.startDate,
+        endDate: activeElection.endDate,
+      },
+    });
   } catch (error) {
     console.error("RFID verification error:", error);
 

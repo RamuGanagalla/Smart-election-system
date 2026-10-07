@@ -66,7 +66,7 @@ export default function Elections() {
       if (!electionsResponse.ok) {
         throw new Error(
           electionsData.message ||
-            "Failed to fetch elections"
+          "Failed to fetch elections"
         );
       }
 
@@ -87,7 +87,7 @@ export default function Elections() {
       if (!votersResponse.ok) {
         throw new Error(
           votersData.message ||
-            "Failed to fetch voters"
+          "Failed to fetch voters"
         );
       }
 
@@ -133,10 +133,10 @@ export default function Elections() {
               const turnout =
                 voterCount > 0
                   ? (
-                      (voteCount /
-                        voterCount) *
-                      100
-                    ).toFixed(2)
+                    (voteCount /
+                      voterCount) *
+                    100
+                  ).toFixed(2)
                   : "0.00";
 
               return {
@@ -156,15 +156,21 @@ export default function Elections() {
                 createdAt:
                   election.createdAt,
 
-                date: `${new Date(
-                  election.startDate
-                ).toLocaleDateString(
-                  "en-GB"
-                )} – ${new Date(
-                  election.endDate
-                ).toLocaleDateString(
-                  "en-GB"
-                )}`,
+                date: `${new Date(election.startDate).toLocaleString("en-IN", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                })} – ${new Date(election.endDate).toLocaleString("en-IN", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                })}`,
 
                 status:
                   election.status
@@ -192,7 +198,7 @@ export default function Elections() {
 
       setError(
         err.message ||
-          "Unable to load elections"
+        "Unable to load elections"
       );
     } finally {
       setLoading(false);
@@ -293,7 +299,7 @@ export default function Elections() {
       if (!response.ok) {
         throw new Error(
           data.message ||
-            "Failed to create election"
+          "Failed to create election"
         );
       }
 
@@ -316,7 +322,7 @@ export default function Elections() {
 
       setError(
         err.message ||
-          "Unable to create election"
+        "Unable to create election"
       );
     } finally {
       setCreating(false);
@@ -344,7 +350,7 @@ export default function Elections() {
       if (!response.ok) {
         alert(
           data.message ||
-            "Unable to activate election"
+          "Unable to activate election"
         );
         return;
       }
@@ -398,7 +404,7 @@ export default function Elections() {
       if (!response.ok) {
         alert(
           data.message ||
-            "Unable to complete election"
+          "Unable to complete election"
         );
         return;
       }
@@ -452,7 +458,7 @@ export default function Elections() {
       if (!response.ok) {
         alert(
           data.message ||
-            "Unable to delete election"
+          "Unable to delete election"
         );
         return;
       }
@@ -490,18 +496,18 @@ export default function Elections() {
 
       startDate: election.startDate
         ? new Date(
-            election.startDate
-          )
-            .toISOString()
-            .slice(0, 16)
+          election.startDate
+        )
+          .toISOString()
+          .slice(0, 16)
         : "",
 
       endDate: election.endDate
         ? new Date(
-            election.endDate
-          )
-            .toISOString()
-            .slice(0, 16)
+          election.endDate
+        )
+          .toISOString()
+          .slice(0, 16)
         : "",
     });
 
@@ -557,7 +563,7 @@ export default function Elections() {
       if (!response.ok) {
         alert(
           data.message ||
-            "Unable to update election"
+          "Unable to update election"
         );
         return;
       }
@@ -773,119 +779,119 @@ export default function Elections() {
 
                     {activeMenu ===
                       election.id && (
-                      <div className="action-menu">
+                        <div className="action-menu">
 
-                        {/* UPCOMING → ACTIVATE */}
+                          {/* UPCOMING → ACTIVATE */}
 
-                        {election.status ===
-                          "Upcoming" && (
-                          <button
-                            onClick={() =>
-                              activateElection(
-                                election.id
-                              )
-                            }
-                          >
-                            <Play
-                              size={17}
-                            />
-                            Activate Election
-                          </button>
-                        )}
+                          {election.status ===
+                            "Upcoming" && (
+                              <button
+                                onClick={() =>
+                                  activateElection(
+                                    election.id
+                                  )
+                                }
+                              >
+                                <Play
+                                  size={17}
+                                />
+                                Activate Election
+                              </button>
+                            )}
 
-                        {/* ACTIVE → COMPLETE */}
+                          {/* ACTIVE → COMPLETE */}
 
-                        {election.status ===
-                          "Active" && (
-                          <button
-                            onClick={() =>
-                              completeElection(
-                                election.id
-                              )
-                            }
-                          >
-                            <CheckCircle2
-                              size={17}
-                            />
-                            Complete Election
-                          </button>
-                        )}
+                          {election.status ===
+                            "Active" && (
+                              <button
+                                onClick={() =>
+                                  completeElection(
+                                    election.id
+                                  )
+                                }
+                              >
+                                <CheckCircle2
+                                  size={17}
+                                />
+                                Complete Election
+                              </button>
+                            )}
 
-                        {/* VIEW DETAILS */}
+                          {/* VIEW DETAILS */}
 
-                        <button
-                          onClick={() => {
-                            setActiveMenu(
-                              null
-                            );
-
-                            alert(
-                              `Election: ${election.name}\n\nID: ${election.id}\nStatus: ${election.status}\nRegistered voters: ${election.voters}\nVotes cast: ${election.votes}\nTurnout: ${election.turnout}%`
-                            );
-                          }}
-                        >
-                          <Eye size={17} />
-                          View Details
-                        </button>
-
-                        {/* EDIT */}
-
-                        {election.status !==
-                          "Completed" && (
-                          <button
-                            onClick={() =>
-                              openEdit(
-                                election
-                              )
-                            }
-                          >
-                            <Pencil
-                              size={17}
-                            />
-                            Edit Election
-                          </button>
-                        )}
-
-                        {/* RESULTS */}
-
-                        {election.status ===
-                          "Completed" && (
                           <button
                             onClick={() => {
                               setActiveMenu(
                                 null
                               );
 
-                              navigate(
-                                "/reports"
+                              alert(
+                                `Election: ${election.name}\n\nID: ${election.id}\nStatus: ${election.status}\nRegistered voters: ${election.voters}\nVotes cast: ${election.votes}\nTurnout: ${election.turnout}%`
                               );
                             }}
                           >
-                            <BarChart3
+                            <Eye size={17} />
+                            View Details
+                          </button>
+
+                          {/* EDIT */}
+
+                          {election.status !==
+                            "Completed" && (
+                              <button
+                                onClick={() =>
+                                  openEdit(
+                                    election
+                                  )
+                                }
+                              >
+                                <Pencil
+                                  size={17}
+                                />
+                                Edit Election
+                              </button>
+                            )}
+
+                          {/* RESULTS */}
+
+                          {election.status ===
+                            "Completed" && (
+                              <button
+                                onClick={() => {
+                                  setActiveMenu(
+                                    null
+                                  );
+
+                                  navigate(
+                                    "/reports"
+                                  );
+                                }}
+                              >
+                                <BarChart3
+                                  size={17}
+                                />
+                                View Results
+                              </button>
+                            )}
+
+                          {/* DELETE */}
+
+                          <button
+                            className="danger"
+                            onClick={() =>
+                              deleteElection(
+                                election.id
+                              )
+                            }
+                          >
+                            <Trash2
                               size={17}
                             />
-                            View Results
+                            Delete Election
                           </button>
-                        )}
 
-                        {/* DELETE */}
-
-                        <button
-                          className="danger"
-                          onClick={() =>
-                            deleteElection(
-                              election.id
-                            )
-                          }
-                        >
-                          <Trash2
-                            size={17}
-                          />
-                          Delete Election
-                        </button>
-
-                      </div>
-                    )}
+                        </div>
+                      )}
 
                   </div>
                 </div>

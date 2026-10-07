@@ -5,7 +5,6 @@ import Elections from "./pages/Elections";
 import Voters from "./pages/Voters";
 import Candidates from "./pages/Candidates";
 import Reports from "./pages/Reports";
-import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 
 export default function App() {
@@ -19,7 +18,6 @@ export default function App() {
         <Route path="/voters" element={<Voters />} />
         <Route path="/candidates" element={<Candidates />} />
         <Route path="/reports" element={<Reports />} />
-        <Route path="/settings" element={<Settings />} />
       </Route>
     </Routes>
   );

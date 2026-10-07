@@ -9,7 +9,6 @@ A polished React/Vite admin dashboard for the Smart Election System.
 - Voter registration and search
 - Candidate management
 - Election reports
-- Settings page
 - Responsive sidebar/navigation
 - Mock data
 - Modal forms
