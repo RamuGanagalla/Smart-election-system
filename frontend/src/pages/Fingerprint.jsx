@@ -43,7 +43,7 @@ function Fingerprint() {
 
       console.log("Fingerprint verified:", data);
 
-      navigate("/confirmation");
+      navigate("/voting");
     } catch (error) {
       console.error(error);
       alert("Unable to connect to the server.");

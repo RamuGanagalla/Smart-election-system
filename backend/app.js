@@ -7,6 +7,7 @@ const electionRoutes = require("./routes/electionRoutes.js");
 const voterRoutes = require("./routes/voterRoutes.js");
 const candidateRoutes = require("./routes/candidateRoutes");
 const voteRoutes = require("./routes/voteRoutes");
+const faceRoutes = require("./routes/faceRoutes");
 const connectDB = require("./config/db");
 
 
@@ -22,6 +23,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/elections", electionRoutes);
 app.use("/api/candidates", candidateRoutes);
 app.use("/api/votes", voteRoutes);
+app.use("/api/voters", faceRoutes);
 app.get("/", (req, res) => {
   res.json({
     message: "Smart Election System API is running",

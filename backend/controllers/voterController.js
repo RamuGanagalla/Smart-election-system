@@ -21,6 +21,7 @@ const generateStatusHash = (voterId, electionId, hasVoted) => {
 
 
 // Register a new voter
+// Register a voter for an election
 const registerVoter = async (req, res) => {
   try {
     const {
@@ -50,15 +51,77 @@ const registerVoter = async (req, res) => {
       });
     }
 
-    // Check duplicate voter ID
-    const existingProfile = await VoterProfile.findOne({ voterId });
+    // --------------------------------------------------
+    // Check that the selected election exists
+    // --------------------------------------------------
+    const election = await Election.findOne({ electionId });
 
-    if (existingProfile) {
-      return res.status(409).json({
+    if (!election) {
+      return res.status(404).json({
         success: false,
-        message: "Voter ID already exists",
+        message: "Selected election not found",
       });
     }
+
+    // --------------------------------------------------
+    // Check whether voter already exists
+    // --------------------------------------------------
+    const existingProfile = await VoterProfile.findOne({ voterId });
+
+    // ==================================================
+    // EXISTING VOTER
+    // ==================================================
+    if (existingProfile) {
+      // Check whether this voter is already registered
+      // for the selected election
+      const existingStatus = await VoterStatus.findOne({
+        voterId,
+        electionId,
+      });
+
+      if (existingStatus) {
+        return res.status(409).json({
+          success: false,
+          message: "Voter is already registered for this election",
+        });
+      }
+
+      // Create a new election-specific status
+      const hasVoted = false;
+
+      const statusHash = generateStatusHash(
+        voterId,
+        electionId,
+        hasVoted
+      );
+
+      await VoterStatus.create({
+        voterId,
+        electionId,
+        hasVoted,
+        statusHash,
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: `Voter registered successfully for ${election.title}`,
+        voter: {
+          voterId: existingProfile.voterId,
+          name: existingProfile.name,
+          email: existingProfile.email,
+          gender: existingProfile.gender,
+          age: existingProfile.age,
+        },
+        election: {
+          electionId: election.electionId,
+          title: election.title,
+        },
+      });
+    }
+
+    // ==================================================
+    // NEW VOTER
+    // ==================================================
 
     // Check duplicate email
     const existingEmail = await VoterProfile.findOne({ email });
@@ -80,8 +143,10 @@ const registerVoter = async (req, res) => {
       });
     }
 
-    // Create personal information
-    const voterProfile = await VoterProfile.create({
+    // --------------------------------------------------
+    // Create voter profile
+    // --------------------------------------------------
+    await VoterProfile.create({
       voterId,
       name,
       email,
@@ -90,7 +155,9 @@ const registerVoter = async (req, res) => {
     });
 
     try {
-      // Create sensitive credentials
+      // ------------------------------------------------
+      // Create voter credentials
+      // ------------------------------------------------
       await VoterCredential.create({
         voterId,
         rfidUid,
@@ -98,7 +165,9 @@ const registerVoter = async (req, res) => {
         faceTemplate: faceTemplate || null,
       });
 
-      // Initial voting status
+      // ------------------------------------------------
+      // Create election-specific voting status
+      // ------------------------------------------------
       const hasVoted = false;
 
       const statusHash = generateStatusHash(
@@ -113,17 +182,19 @@ const registerVoter = async (req, res) => {
         hasVoted,
         statusHash,
       });
-
     } catch (error) {
-      // Roll back profile if another collection fails
+      // Roll back profile if credential/status creation fails
       await VoterProfile.deleteOne({ voterId });
 
       throw error;
     }
 
-    res.status(201).json({
+    // --------------------------------------------------
+    // Success
+    // --------------------------------------------------
+    return res.status(201).json({
       success: true,
-      message: "Voter registered successfully",
+      message: `Voter registered successfully for ${election.title}`,
       voter: {
         voterId,
         name,
@@ -131,12 +202,15 @@ const registerVoter = async (req, res) => {
         gender,
         age,
       },
+      election: {
+        electionId: election.electionId,
+        title: election.title,
+      },
     });
-
   } catch (error) {
     console.error("Register voter error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Server error while registering voter",
     });

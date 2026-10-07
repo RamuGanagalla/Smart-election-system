@@ -22,8 +22,8 @@ const voterCredentialSchema = new mongoose.Schema(
     },
 
     faceTemplate: {
-      type: String,
-      default: null,
+      type: [Number],
+      default: []
     },
   },
   {

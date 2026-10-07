@@ -1,3 +1,4 @@
+import * as faceapi from "@vladmandic/face-api";
 import { useEffect, useMemo, useState } from "react";
 import {
   Search,
@@ -19,6 +20,10 @@ const API_BASE = "http://localhost:3000/api";
 export default function Voters() {
   const [voters, setVoters] = useState([]);
   const [elections, setElections] = useState([]);
+  const [faceTemplate, setFaceTemplate] = useState([]);
+  const [faceEnrolling, setFaceEnrolling] = useState(false);
+  const [faceCaptured, setFaceCaptured] = useState(false);
+  const [faceCapturing, setFaceCapturing] = useState(false);
 
   const [selectedElection, setSelectedElection] =
     useState("");
@@ -84,7 +89,7 @@ export default function Voters() {
 
       setError(
         err.message ||
-          "Unable to load voters"
+        "Unable to load voters"
       );
     } finally {
       setLoading(false);
@@ -108,7 +113,7 @@ export default function Voters() {
       if (!response.ok || !data.success) {
         throw new Error(
           data.message ||
-            "Failed to fetch elections"
+          "Failed to fetch elections"
         );
       }
 
@@ -140,7 +145,7 @@ export default function Voters() {
 
       setError(
         err.message ||
-          "Unable to load elections"
+        "Unable to load elections"
       );
     } finally {
       setLoadingElections(false);
@@ -173,7 +178,7 @@ export default function Voters() {
       if (!response.ok || !data.success) {
         throw new Error(
           data.message ||
-            "Failed to fetch votes"
+          "Failed to fetch votes"
         );
       }
 
@@ -289,9 +294,76 @@ export default function Voters() {
   // =====================================================
   // REGISTER VOTER
   // =====================================================
+  const handleFaceEnrollment = async () => {
+    let stream;
 
+    try {
+      setFaceCapturing(true);
+      setError("");
+      setSuccess("");
+
+      await faceapi.nets.ssdMobilenetv1.loadFromUri("/models");
+
+      const video = document.createElement("video");
+
+      video.setAttribute("playsinline", "true");
+      video.muted = true;
+
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: false,
+      });
+
+      video.srcObject = stream;
+
+      await video.play();
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const detections = await faceapi.detectAllFaces(
+        video,
+        new faceapi.SsdMobilenetv1Options({
+          minConfidence: 0.5,
+        })
+      );
+
+      if (detections.length === 0) {
+        throw new Error(
+          "No face detected. Please position your face in front of the camera."
+        );
+      }
+
+      if (detections.length > 1) {
+        throw new Error(
+          "Multiple faces detected. Please make sure only one face is visible."
+        );
+      }
+
+      setFaceCaptured(true);
+
+      setSuccess("Face captured successfully.");
+    } catch (error) {
+      console.error("Face capture error:", error);
+
+      setFaceCaptured(false);
+
+      setError(
+        error.message || "Unable to capture face."
+      );
+    } finally {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+
+      setFaceCapturing(false);
+    }
+  };
   const registerVoter = async (event) => {
     event.preventDefault();
+    if (!faceCaptured) {
+      setError("Please capture the face before registering the voter.");
+      return;
+    }
 
     setSubmitting(true);
     setError("");
@@ -373,7 +445,7 @@ export default function Voters() {
       ) {
         throw new Error(
           data.message ||
-            "Failed to register voter"
+          "Failed to register voter"
         );
       }
 
@@ -396,7 +468,7 @@ export default function Voters() {
 
       setError(
         err.message ||
-          "Unable to register voter"
+        "Unable to register voter"
       );
     } finally {
       setSubmitting(false);
@@ -506,7 +578,7 @@ export default function Voters() {
       ) {
         throw new Error(
           data.message ||
-            "Failed to update voter"
+          "Failed to update voter"
         );
       }
 
@@ -526,7 +598,7 @@ export default function Voters() {
 
       setError(
         err.message ||
-          "Unable to update voter"
+        "Unable to update voter"
       );
     } finally {
       setSubmitting(false);
@@ -572,7 +644,7 @@ export default function Voters() {
       ) {
         throw new Error(
           data.message ||
-            "Failed to delete voter"
+          "Failed to delete voter"
         );
       }
 
@@ -589,7 +661,7 @@ export default function Voters() {
 
       setError(
         err.message ||
-          "Unable to delete voter"
+        "Unable to delete voter"
       );
     }
   };
@@ -640,7 +712,7 @@ export default function Voters() {
             profile.gender || "",
             profile.age || "",
             credentials.rfidUid ||
-              "",
+            "",
 
             credentials.fingerprintTemplate
               ? "Enrolled"
@@ -951,182 +1023,182 @@ export default function Voters() {
         </div>
 
         <div className="table-wrap">
-  {loading ? (
-    <div
-      style={{
-        padding: "50px",
-        textAlign: "center",
-      }}
-    >
-      Loading voters...
-    </div>
-  ) : filteredVoters.length === 0 ? (
-    <div
-      style={{
-        padding: "50px",
-        textAlign: "center",
-      }}
-    >
-      <UserPlus
-        size={35}
-        style={{
-          opacity: 0.5,
-          marginBottom: "10px",
-        }}
-      />
+          {loading ? (
+            <div
+              style={{
+                padding: "50px",
+                textAlign: "center",
+              }}
+            >
+              Loading voters...
+            </div>
+          ) : filteredVoters.length === 0 ? (
+            <div
+              style={{
+                padding: "50px",
+                textAlign: "center",
+              }}
+            >
+              <UserPlus
+                size={35}
+                style={{
+                  opacity: 0.5,
+                  marginBottom: "10px",
+                }}
+              />
 
-      <h3>No voters found</h3>
+              <h3>No voters found</h3>
 
-      <p>
-        {search
-          ? "No voters match your search."
-          : "No voters have been registered yet."}
-      </p>
-    </div>
-  ) : (
-    <table>
-      <thead>
-        <tr>
-          <th>Voter</th>
-          <th>Voter ID</th>
-          <th>Vote Status</th>
-          <th></th>
-        </tr>
-      </thead>
+              <p>
+                {search
+                  ? "No voters match your search."
+                  : "No voters have been registered yet."}
+              </p>
+            </div>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Voter</th>
+                  <th>Voter ID</th>
+                  <th>Vote Status</th>
+                  <th></th>
+                </tr>
+              </thead>
 
-      <tbody>
-        {filteredVoters.map((voter) => {
-          const profile = voter.profile || {};
+              <tbody>
+                {filteredVoters.map((voter) => {
+                  const profile = voter.profile || {};
 
-          return (
-            <tr key={profile.voterId}>
-              {/* VOTER */}
-              <td>
-                <div className="person-cell">
-                  <div className="small-avatar">
-                    {profile.name
-                      ?.charAt(0)
-                      ?.toUpperCase() || "V"}
-                  </div>
+                  return (
+                    <tr key={profile.voterId}>
+                      {/* VOTER */}
+                      <td>
+                        <div className="person-cell">
+                          <div className="small-avatar">
+                            {profile.name
+                              ?.charAt(0)
+                              ?.toUpperCase() || "V"}
+                          </div>
 
-                  <div>
-                    <strong>
-                      {profile.name || "Unknown"}
-                    </strong>
+                          <div>
+                            <strong>
+                              {profile.name || "Unknown"}
+                            </strong>
 
-                    <small>
-                      {profile.email || "-"}
-                    </small>
-                  </div>
-                </div>
-              </td>
+                            <small>
+                              {profile.email || "-"}
+                            </small>
+                          </div>
+                        </div>
+                      </td>
 
-              {/* VOTER ID */}
-              <td>
-                <code>
-                  {profile.voterId || "-"}
-                </code>
-              </td>
+                      {/* VOTER ID */}
+                      <td>
+                        <code>
+                          {profile.voterId || "-"}
+                        </code>
+                      </td>
 
-              {/* VOTE STATUS */}
-              <td>
-                <StatusBadge
-                  status={getVoteStatusLabel(voter)}
-                />
-              </td>
+                      {/* VOTE STATUS */}
+                      <td>
+                        <StatusBadge
+                          status={getVoteStatusLabel(voter)}
+                        />
+                      </td>
 
-              {/* ACTIONS */}
-              <td>
-                <div
-                  style={{
-                    position: "relative",
-                  }}
-                >
-                  <button
-                    className="icon-btn"
-                    onClick={() =>
-                      setOpenMenu(
-                        openMenu === profile.voterId
-                          ? null
-                          : profile.voterId
-                      )
-                    }
-                  >
-                    <MoreVertical size={17} />
-                  </button>
+                      {/* ACTIONS */}
+                      <td>
+                        <div
+                          style={{
+                            position: "relative",
+                          }}
+                        >
+                          <button
+                            className="icon-btn"
+                            onClick={() =>
+                              setOpenMenu(
+                                openMenu === profile.voterId
+                                  ? null
+                                  : profile.voterId
+                              )
+                            }
+                          >
+                            <MoreVertical size={17} />
+                          </button>
 
-                  {openMenu === profile.voterId && (
-                    <div
-                      className="action-menu"
-                      style={{
-                        position: "absolute",
-                        right: 0,
-                        top: "38px",
-                        zIndex: 20,
-                        minWidth: "150px",
-                        background: "#ffffff",
-                        border: "1px solid #e5e7eb",
-                        borderRadius: "10px",
-                        boxShadow:
-                          "0 10px 25px rgba(0,0,0,0.12)",
-                        padding: "6px",
-                      }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() =>
-                          openEditModal(voter)
-                        }
-                        style={{
-                          width: "100%",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          padding: "9px 10px",
-                          border: "none",
-                          background: "transparent",
-                          cursor: "pointer",
-                          borderRadius: "7px",
-                        }}
-                      >
-                        <Pencil size={15} />
-                        Edit
-                      </button>
+                          {openMenu === profile.voterId && (
+                            <div
+                              className="action-menu"
+                              style={{
+                                position: "absolute",
+                                right: 0,
+                                top: "38px",
+                                zIndex: 20,
+                                minWidth: "150px",
+                                background: "#ffffff",
+                                border: "1px solid #e5e7eb",
+                                borderRadius: "10px",
+                                boxShadow:
+                                  "0 10px 25px rgba(0,0,0,0.12)",
+                                padding: "6px",
+                              }}
+                            >
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  openEditModal(voter)
+                                }
+                                style={{
+                                  width: "100%",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "8px",
+                                  padding: "9px 10px",
+                                  border: "none",
+                                  background: "transparent",
+                                  cursor: "pointer",
+                                  borderRadius: "7px",
+                                }}
+                              >
+                                <Pencil size={15} />
+                                Edit
+                              </button>
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          deleteVoter(
-                            profile.voterId
-                          )
-                        }
-                        style={{
-                          width: "100%",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          padding: "9px 10px",
-                          border: "none",
-                          background: "transparent",
-                          color: "#dc2626",
-                          cursor: "pointer",
-                          borderRadius: "7px",
-                        }}
-                      >
-                        <Trash2 size={15} />
-                        Delete
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  )}
-</div>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  deleteVoter(
+                                    profile.voterId
+                                  )
+                                }
+                                style={{
+                                  width: "100%",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "8px",
+                                  padding: "9px 10px",
+                                  border: "none",
+                                  background: "transparent",
+                                  color: "#dc2626",
+                                  cursor: "pointer",
+                                  borderRadius: "7px",
+                                }}
+                              >
+                                <Trash2 size={15} />
+                                Delete
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
       </section>
 
       {/* =====================================================
@@ -1318,14 +1390,44 @@ export default function Voters() {
               </div>
 
               <div className="form-grid">
-                <label>
-                  Face Template
+                <div>
+                  <label>Face Capture</label>
 
-                  <input
-                    name="faceTemplate"
-                    placeholder="Enter face template"
-                  />
-                </label>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                      marginTop: "8px",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      className="secondary-btn"
+                      onClick={handleFaceEnrollment}
+                      disabled={faceCapturing || submitting}
+                    >
+                      <ScanFace size={17} />
+
+                      {faceCapturing
+                        ? "Checking Face..."
+                        : faceCaptured
+                          ? "Face Captured ✓"
+                          : "Capture Face"}
+                    </button>
+
+                    <span
+                      style={{
+                        fontSize: "13px",
+                        color: faceCaptured ? "#16a34a" : "#6b7280",
+                      }}
+                    >
+                      {faceCaptured
+                        ? "Exactly one face detected"
+                        : "No face captured"}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               <div className="info-box">
