@@ -220,3 +220,98 @@ button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
+/* =========================
+   ACTIVE ELECTION CARD
+   ========================= */
+
+.active-election {
+  width: 420px;
+  max-width: 90%;
+  margin: 25px auto 10px;
+  padding: 18px 24px;
+  box-sizing: border-box;
+
+  background: #ffffff;
+  border: 1px solid #dce3ef;
+  border-radius: 14px;
+
+  box-shadow: 0 6px 20px rgba(30, 50, 80, 0.08);
+
+  text-align: center;
+}
+
+/* Current Election label */
+
+.election-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #4b5563;
+}
+
+/* Green status dot */
+
+.status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #22c55e;
+
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
+}
+
+/* Election title */
+
+.active-election h3 {
+  margin: 10px 0 8px;
+
+  font-size: 23px;
+  font-weight: 700;
+  line-height: 1.25;
+
+  color: #172033;
+}
+
+/* Divider */
+
+.election-line {
+  width: 55px;
+  height: 3px;
+  margin: 10px auto;
+
+  background: #315bea;
+  border-radius: 10px;
+}
+
+/* Small description */
+
+.election-subtitle {
+  margin: 7px 0 0;
+
+  font-size: 13px;
+  color: #718096;
+}
+
+/* No active election */
+
+.no-election {
+  border-color: #f0d5d5;
+  background: #fffafa;
+}
+
+.status-dot.offline {
+  background: #ef4444;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12);
+}
+
+.no-election h3 {
+  font-size: 15px;
+  font-weight: 500;
+  color: #b42318;
+  margin-top: 10px;
+}
