@@ -231,44 +231,55 @@ export default function Reports() {
   // =====================================================
 
   const voterStats = useMemo(() => {
-    const totalVoters =
-      voters.length;
+  // Only voters registered for the selected election
+  const electionVoters = selectedElection
+    ? voters.filter((voter) =>
+        voter.statuses?.some(
+          (status) =>
+            status.electionId ===
+            selectedElection
+        )
+      )
+    : [];
 
-    const votedVoters =
-      voters.filter((voter) => {
-        const status =
-          voter.statuses?.find(
-            (item) =>
-              item.electionId ===
-              selectedElection
-          );
+  const totalVoters =
+    electionVoters.length;
 
-        return status?.hasVoted === true;
-      }).length;
+  const votedVoters =
+    electionVoters.filter((voter) => {
+      const status =
+        voter.statuses?.find(
+          (item) =>
+            item.electionId ===
+            selectedElection
+        );
 
-    const notVoted =
-      Math.max(
-        totalVoters - votedVoters,
-        0
-      );
+      return status?.hasVoted === true;
+    }).length;
 
-    const turnout =
-      totalVoters > 0
-        ? (votedVoters /
+  const notVoted =
+    Math.max(
+      totalVoters - votedVoters,
+      0
+    );
+
+  const turnout =
+    totalVoters > 0
+      ? (votedVoters /
           totalVoters) *
         100
-        : 0;
+      : 0;
 
-    return {
-      totalVoters,
-      votedVoters,
-      notVoted,
-      turnout,
-    };
-  }, [
-    voters,
-    selectedElection,
-  ]);
+  return {
+    totalVoters,
+    votedVoters,
+    notVoted,
+    turnout,
+  };
+}, [
+  voters,
+  selectedElection,
+]);
 
   // =====================================================
   // CANDIDATE RESULTS

@@ -107,6 +107,18 @@ export default function Elections() {
           electionList.map(
             async (election) => {
               let voteCount = 0;
+              const electionVoters =
+                (votersData.voters || []).filter(
+                  (voter) =>
+                    voter.statuses?.some(
+                      (status) =>
+                        status.electionId ===
+                        election.electionId
+                    )
+                );
+
+              const electionVoterCount =
+                electionVoters.length;
 
               try {
                 const votesResponse =
@@ -131,10 +143,10 @@ export default function Elections() {
               }
 
               const turnout =
-                voterCount > 0
+                electionVoterCount > 0
                   ? (
                     (voteCount /
-                      voterCount) *
+                      electionVoterCount) *
                     100
                   ).toFixed(2)
                   : "0.00";
@@ -181,7 +193,7 @@ export default function Elections() {
                     .toLowerCase(),
 
                 // REAL DATABASE VALUES
-                voters: voterCount,
+                voters: electionVoterCount,
                 votes: voteCount,
                 turnout,
               };

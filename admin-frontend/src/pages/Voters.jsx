@@ -235,61 +235,67 @@ export default function Voters() {
   // =====================================================
 
   const filteredVoters = useMemo(() => {
-    const query =
-      search.trim().toLowerCase();
+  const query = search.trim().toLowerCase();
 
-    if (!query) {
-      return voters;
-    }
+  // First: show only voters registered
+  // for the selected election
+  const electionVoters = selectedElection
+    ? voters.filter((voter) =>
+        voter.statuses?.some(
+          (status) =>
+            status.electionId === selectedElection
+        )
+      )
+    : [];
 
-    return voters.filter((voter) => {
-      const profile =
-        voter.profile || {};
+  // If no search text, return only election voters
+  if (!query) {
+    return electionVoters;
+  }
 
-      const credentials =
-        voter.credentials || {};
+  // Then apply search filter
+  return electionVoters.filter((voter) => {
+    const profile = voter.profile || {};
+    const credentials = voter.credentials || {};
 
-      const searchableText = [
-        profile.voterId,
-        profile.name,
-        profile.email,
-        profile.gender,
-        profile.age,
-        credentials.rfidUid,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
+    const searchableText = [
+      profile.voterId,
+      profile.name,
+      profile.email,
+      profile.gender,
+      profile.age,
+      credentials.rfidUid,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
 
-      return searchableText.includes(
-        query
-      );
-    });
-  }, [voters, search]);
-
+    return searchableText.includes(query);
+  });
+}, [voters, search, selectedElection]);
   // =====================================================
   // STATISTICS
   // =====================================================
 
   const statistics = useMemo(() => {
-    const total = voters.length;
+  const total = filteredVoters.length;
 
-    const voted = Math.min(
-      voteCount,
-      total
-    );
+  const voted = Math.min(
+    voteCount,
+    total
+  );
 
-    const notVoted = Math.max(
-      total - voted,
-      0
-    );
+  const notVoted = Math.max(
+    total - voted,
+    0
+  );
 
-    return {
-      total,
-      voted,
-      notVoted,
-    };
-  }, [voters.length, voteCount]);
+  return {
+    total,
+    voted,
+    notVoted,
+  };
+}, [filteredVoters.length, voteCount]);
 
   // =====================================================
   // REGISTER VOTER

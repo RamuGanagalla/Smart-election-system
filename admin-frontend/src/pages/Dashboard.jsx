@@ -79,12 +79,7 @@ export default function Dashboard() {
       const votersData =
         await votersResponse.json();
 
-      const totalVoters =
-        votersData.count ??
-        votersData.voters?.length ??
-        0;
-
-      setVotersCount(totalVoters);
+      const allVoters = votersData.voters || [];
 
       // =========================================
       // CANDIDATES
@@ -108,7 +103,7 @@ export default function Dashboard() {
 
       setCandidatesCount(
         candidatesData.count ??
-          candidateList.length
+        candidateList.length
       );
 
       // =========================================
@@ -119,6 +114,23 @@ export default function Dashboard() {
         (election) =>
           election.status?.toLowerCase() ===
           "active"
+      );
+      // =========================================
+      // ACTIVE ELECTION VOTERS
+      // =========================================
+
+      const activeElectionVoters = active
+        ? allVoters.filter((voter) =>
+          voter.statuses?.some(
+            (status) =>
+              status.electionId ===
+              active.electionId
+          )
+        )
+        : [];
+
+      setVotersCount(
+        activeElectionVoters.length
       );
 
       setActiveElection(active || null);
@@ -176,8 +188,8 @@ export default function Dashboard() {
                   const candidateId =
                     String(
                       candidate.candidateId ??
-                        candidate._id ??
-                        candidate.id
+                      candidate._id ??
+                      candidate.id
                     );
 
                   return {
@@ -188,7 +200,7 @@ export default function Dashboard() {
 
                     votes:
                       voteCounts[
-                        candidateId
+                      candidateId
                       ] || 0,
                   };
                 });
@@ -267,10 +279,10 @@ export default function Dashboard() {
   const currentTurnout =
     votersCount > 0
       ? (
-          (activeElectionVotes /
-            votersCount) *
-          100
-        ).toFixed(2)
+        (activeElectionVotes /
+          votersCount) *
+        100
+      ).toFixed(2)
       : "0.00";
 
   // =========================================
@@ -326,11 +338,11 @@ export default function Dashboard() {
   const maxCandidateVotes =
     candidateVoteData.length > 0
       ? Math.max(
-          ...candidateVoteData.map(
-            (candidate) =>
-              candidate.votes
-          )
+        ...candidateVoteData.map(
+          (candidate) =>
+            candidate.votes
         )
+      )
       : 0;
 
   return (
@@ -526,7 +538,7 @@ export default function Dashboard() {
                   <strong>
                     {Math.max(
                       votersCount -
-                        activeElectionVotes,
+                      activeElectionVotes,
                       0
                     )}
                   </strong>
@@ -677,13 +689,13 @@ export default function Dashboard() {
                   const barHeight =
                     maxCandidateVotes > 0
                       ? Math.max(
-                          (candidate.votes /
-                            maxCandidateVotes) *
-                            180,
-                          candidate.votes > 0
-                            ? 12
-                            : 4
-                        )
+                        (candidate.votes /
+                          maxCandidateVotes) *
+                        180,
+                        candidate.votes > 0
+                          ? 12
+                          : 4
+                      )
                       : 4;
 
                   return (
@@ -822,7 +834,7 @@ export default function Dashboard() {
               <tbody>
 
                 {recentElections.length >
-                0 ? (
+                  0 ? (
 
                   recentElections.map(
                     (election) => (
@@ -870,7 +882,7 @@ export default function Dashboard() {
                         <td>
                           <strong>
                             {election.electionId ===
-                            activeElection?.electionId
+                              activeElection?.electionId
                               ? `${currentTurnout}%`
                               : "—"}
                           </strong>
