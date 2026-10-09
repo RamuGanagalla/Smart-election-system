@@ -100,8 +100,7 @@ function Welcome() {
 
       <div className="logo">🗳️</div>
 
-      <h1>SMART ELECTION</h1>
-      <h2>SYSTEM</h2>
+      <h1>IntelliVote</h1>
 
       {/* Active Election */}
       {electionLoading ? (
