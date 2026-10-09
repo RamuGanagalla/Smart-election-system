@@ -1,12 +1,11 @@
 import * as faceapi from "@vladmandic/face-api";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import {
   Search,
   Download,
   X,
   UserPlus,
   Fingerprint,
-  Radio,
   ScanFace,
   Pencil,
   Trash2,
@@ -20,10 +19,12 @@ const API_BASE = "http://localhost:3000/api";
 export default function Voters() {
   const [voters, setVoters] = useState([]);
   const [elections, setElections] = useState([]);
+  const [capturedImage, setCapturedImage] = useState("");
   const [faceTemplate, setFaceTemplate] = useState([]);
-  const [faceEnrolling, setFaceEnrolling] = useState(false);
   const [faceCaptured, setFaceCaptured] = useState(false);
   const [faceCapturing, setFaceCapturing] = useState(false);
+  const [cameraStream, setCameraStream] = useState(null);
+  const videoRef = useRef(null);
 
   const [selectedElection, setSelectedElection] =
     useState("");
@@ -210,6 +211,8 @@ export default function Voters() {
 
   useEffect(() => {
     fetchVoteCount(selectedElection);
+    fetchVoters();
+    fetchElections();
   }, [selectedElection]);
 
   // =====================================================
@@ -235,135 +238,247 @@ export default function Voters() {
   // =====================================================
 
   const filteredVoters = useMemo(() => {
-  const query = search.trim().toLowerCase();
+    const query = search.trim().toLowerCase();
 
-  // First: show only voters registered
-  // for the selected election
-  const electionVoters = selectedElection
-    ? voters.filter((voter) =>
+    // First: show only voters registered
+    // for the selected election
+    const electionVoters = selectedElection
+      ? voters.filter((voter) =>
         voter.statuses?.some(
           (status) =>
             status.electionId === selectedElection
         )
       )
-    : [];
+      : [];
 
-  // If no search text, return only election voters
-  if (!query) {
-    return electionVoters;
-  }
+    // If no search text, return only election voters
+    if (!query) {
+      return electionVoters;
+    }
 
-  // Then apply search filter
-  return electionVoters.filter((voter) => {
-    const profile = voter.profile || {};
-    const credentials = voter.credentials || {};
+    // Then apply search filter
+    return electionVoters.filter((voter) => {
+      const profile = voter.profile || {};
+      const credentials = voter.credentials || {};
 
-    const searchableText = [
-      profile.voterId,
-      profile.name,
-      profile.email,
-      profile.gender,
-      profile.age,
-      credentials.rfidUid,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
+      const searchableText = [
+        profile.voterId,
+        profile.name,
+        profile.email,
+        profile.gender,
+        profile.age,
+        credentials.rfidUid,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
 
-    return searchableText.includes(query);
-  });
-}, [voters, search, selectedElection]);
+      return searchableText.includes(query);
+    });
+  }, [voters, search, selectedElection]);
   // =====================================================
   // STATISTICS
   // =====================================================
 
   const statistics = useMemo(() => {
-  const total = filteredVoters.length;
+    const total = filteredVoters.length;
 
-  const voted = Math.min(
-    voteCount,
-    total
-  );
+    const voted = Math.min(
+      voteCount,
+      total
+    );
 
-  const notVoted = Math.max(
-    total - voted,
-    0
-  );
+    const notVoted = Math.max(
+      total - voted,
+      0
+    );
 
-  return {
-    total,
-    voted,
-    notVoted,
+    return {
+      total,
+      voted,
+      notVoted,
+    };
+  }, [filteredVoters.length, voteCount]);
+  const startFaceCamera = async () => {
+    try {
+      setError("");
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          facingMode: "user",
+        },
+        audio: false,
+      });
+
+      setCameraStream(stream);
+    } catch (error) {
+      console.error("Camera error:", error);
+      setError(
+        "Unable to access camera. Please allow camera permission."
+      );
+    }
   };
-}, [filteredVoters.length, voteCount]);
+  useEffect(() => {
+    if (!cameraStream || !videoRef.current) return;
+
+    videoRef.current.srcObject = cameraStream;
+
+    videoRef.current.play().catch((error) => {
+      console.error("Video playback error:", error);
+    });
+  }, [cameraStream]);
+  const stopFaceCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+    }
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+
+    setCameraStream(null);
+  };
+
 
   // =====================================================
   // REGISTER VOTER
   // =====================================================
+
   const handleFaceEnrollment = async () => {
-    let stream;
+    let stream = null;
+    let video = null;
 
     try {
       setFaceCapturing(true);
       setError("");
       setSuccess("");
 
-      await faceapi.nets.ssdMobilenetv1.loadFromUri("/models");
+      // 1. Request camera access with explicit user permission
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+            facingMode: "user",
+          },
+          audio: false,
+        });
+      } catch (camErr) {
+        if (camErr.name === "NotAllowedError" || camErr.name === "PermissionDeniedError") {
+          throw new Error(
+            "Camera permission denied. Please allow camera access in your browser."
+          );
+        } else if (camErr.name === "NotFoundError" || camErr.name === "DevicesNotFoundError") {
+          throw new Error("No camera detected on this system.");
+        }
+        throw new Error(camErr.message || "Unable to access camera.");
+      }
 
-      const video = document.createElement("video");
+      // 2. Load face-api models (detection, landmarks, descriptor recognition)
+      await Promise.all([
+        faceapi.nets.ssdMobilenetv1.loadFromUri("/models"),
+        faceapi.nets.faceLandmark68Net.loadFromUri("/models"),
+        faceapi.nets.faceRecognitionNet.loadFromUri("/models"),
+      ]);
 
+      // 3. Play camera in temporary video element for frame capture
+      video = document.createElement("video");
       video.setAttribute("playsinline", "true");
       video.muted = true;
-
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: false,
-      });
-
       video.srcObject = stream;
 
       await video.play();
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Short delay for webcam exposure/focus calibration
+      await new Promise((resolve) => setTimeout(resolve, 800));
 
-      const detections = await faceapi.detectAllFaces(
-        video,
-        new faceapi.SsdMobilenetv1Options({
-          minConfidence: 0.5,
-        })
-      );
+      // 4. Detect face with landmarks and 128-d descriptor
+      const detections = await faceapi
+        .detectAllFaces(
+          video,
+          new faceapi.SsdMobilenetv1Options({
+            minConfidence: 0.5,
+          })
+        )
+        .withFaceLandmarks()
+        .withFaceDescriptors();
 
-      if (detections.length === 0) {
+      // 5. Presence and quality checks
+      if (!detections || detections.length === 0) {
         throw new Error(
-          "No face detected. Please position your face in front of the camera."
+          "No face detected. Please position your face clearly in front of the camera with good lighting."
         );
       }
 
       if (detections.length > 1) {
         throw new Error(
-          "Multiple faces detected. Please make sure only one face is visible."
+          "Multiple faces detected. Please make sure only the voter is in the frame."
         );
       }
 
-      setFaceCaptured(true);
+      const detection = detections[0];
+      const box = detection.detection.box;
 
-      setSuccess("Face captured successfully.");
+      if (box.width < 80 || box.height < 80) {
+        throw new Error(
+          "Face is too far from camera. Please move closer."
+        );
+      }
+
+      if (detection.detection.score < 0.55) {
+        throw new Error(
+          "Face image quality is too low. Please improve lighting and face the camera directly."
+        );
+      }
+
+      const descriptorArray = Array.from(detection.descriptor);
+
+      if (descriptorArray.length !== 128) {
+        throw new Error("Failed to extract valid 128-dimensional biometric template.");
+      }
+      // Capture the current frame from the visible camera preview
+      if (videoRef.current) {
+        const canvas = document.createElement("canvas");
+
+        canvas.width = videoRef.current.videoWidth;
+        canvas.height = videoRef.current.videoHeight;
+
+        const context = canvas.getContext("2d");
+
+        context.drawImage(
+          videoRef.current,
+          0,
+          0,
+          canvas.width,
+          canvas.height
+        );
+
+        const image = canvas.toDataURL("image/jpeg", 0.9);
+
+        setCapturedImage(image);
+      }
+
+      setFaceTemplate(descriptorArray);
+      setFaceCaptured(true);
+      setSuccess("Face captured successfully (128-D biometric template generated).");
     } catch (error) {
       console.error("Face capture error:", error);
-
       setFaceCaptured(false);
-
-      setError(
-        error.message || "Unable to capture face."
-      );
+      setFaceTemplate([]);
+      setError(error.message || "Unable to capture face.");
     } finally {
       if (stream) {
         stream.getTracks().forEach((track) => track.stop());
       }
-
+      if (video) {
+        video.srcObject = null;
+      }
       setFaceCapturing(false);
     }
   };
+
   const registerVoter = async (event) => {
     event.preventDefault();
     if (!faceCaptured) {
@@ -384,17 +499,17 @@ export default function Voters() {
         voterId:
           formData
             .get("voterId")
-            .trim(),
+            ?.trim(),
 
         name:
           formData
             .get("name")
-            .trim(),
+            ?.trim(),
 
         email:
           formData
             .get("email")
-            .trim(),
+            ?.trim(),
 
         gender:
           formData.get("gender"),
@@ -406,19 +521,19 @@ export default function Voters() {
         rfidUid:
           formData
             .get("rfidUid")
-            .trim(),
+            ?.trim(),
 
         fingerprintTemplate:
           formData
             .get(
               "fingerprintTemplate"
             )
-            .trim() || null,
+            ?.trim() || null,
 
         faceTemplate:
-          formData
-            .get("faceTemplate")
-            .trim() || null,
+          faceCaptured && Array.isArray(faceTemplate) && faceTemplate.length === 128
+            ? faceTemplate
+            : null,
 
         electionId:
           formData.get(
@@ -459,7 +574,19 @@ export default function Voters() {
         "Voter registered successfully."
       );
 
+
+      // Stop the camera
+      stopFaceCamera();
+
+      // Clear captured face state
+      setCapturedImage("");
+      setFaceCaptured(false);
+      setFaceTemplate([]);
+
+      // Close registration modal
       setShowRegister(false);
+
+
 
       await fetchVoters();
 
@@ -549,12 +676,10 @@ export default function Voters() {
             .get(
               "fingerprintTemplate"
             )
-            .trim() || null,
+            ?.trim() || null,
 
         faceTemplate:
-          formData
-            .get("faceTemplate")
-            .trim() || null,
+          formData.get("faceTemplate")?.trim() || undefined,
       };
 
       const response = await fetch(
@@ -793,31 +918,6 @@ export default function Voters() {
   };
 
   // =====================================================
-  // CREDENTIAL STATUS
-  // =====================================================
-
-  const getCredentialStatus = (
-    voter
-  ) => {
-    const credentials =
-      voter.credentials || {};
-
-    return {
-      rfid: Boolean(
-        credentials.rfidUid
-      ),
-
-      fingerprint: Boolean(
-        credentials.fingerprintTemplate
-      ),
-
-      face: Boolean(
-        credentials.faceTemplate
-      ),
-    };
-  };
-
-  // =====================================================
   // VOTE STATUS
   // =====================================================
 
@@ -865,6 +965,8 @@ export default function Voters() {
             onClick={() => {
               setError("");
               setSuccess("");
+              setFaceCaptured(false);
+              setFaceTemplate([]);
               setShowRegister(true);
             }}
           >
@@ -1229,11 +1331,13 @@ export default function Voters() {
 
               <button
                 className="icon-btn"
-                onClick={() =>
-                  setShowRegister(
-                    false
-                  )
-                }
+                onClick={() => {
+                  stopFaceCamera();
+                  setFaceCaptured(false);
+                  setFaceTemplate([]);
+                  setCapturedImage("");
+                  setShowRegister(false);
+                }}
               >
                 <X />
               </button>
@@ -1395,102 +1499,214 @@ export default function Voters() {
                 </label>
               </div>
 
-              <div className="form-grid">
-                <div>
-                  <label>Face Capture</label>
+              <div>
+                <label>Face Capture</label>
 
+                <div
+                  style={{
+                    marginTop: "8px",
+                    padding: "14px",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "12px",
+                    background: "#f8fafc",
+                  }}
+                >
+                  {/* Live camera preview */}
+
+                  {/* CAMERA PREVIEW */}
+                  <div
+                    style={{
+                      width: "286px",
+                      height: "210px",
+                      margin: "0 auto 12px",
+                      borderRadius: "10px",
+                      overflow: "hidden",
+                      background: "#111827",
+                    }}
+                  >
+                    {capturedImage ? (
+                      <img
+                        src={capturedImage}
+                        alt="Captured face"
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          transform: "scaleX(-1)",
+                        }}
+                      />
+                    ) : cameraStream ? (
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        muted
+                        playsInline
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          transform: "scaleX(-1)",
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "#9ca3af",
+                          fontSize: "13px",
+                        }}
+                      >
+                        Camera preview
+                      </div>
+                    )}
+                  </div>
+
+                  {/* STATUS TEXT */}
+                  <div
+                    style={{
+                      textAlign: "center",
+                      marginBottom: "12px",
+                      fontSize: "13px",
+                      color: "#6b7280",
+                    }}
+                  >
+                    {capturedImage
+                      ? "Face captured successfully."
+                      : cameraStream
+                        ? "Position your face clearly inside the camera frame."
+                        : "Open the camera to see the live preview."}
+                  </div>
+
+                  {/* BUTTONS */}
                   <div
                     style={{
                       display: "flex",
-                      alignItems: "center",
-                      gap: "12px",
-                      marginTop: "8px",
+                      justifyContent: "center",
+                      gap: "10px",
                     }}
                   >
-                    <button
-                      type="button"
-                      className="secondary-btn"
-                      onClick={handleFaceEnrollment}
-                      disabled={faceCapturing || submitting}
-                    >
-                      <ScanFace size={17} />
+                    {!cameraStream && !capturedImage && (
+                      <button
+                        type="button"
+                        className="secondary-btn"
+                        onClick={startFaceCamera}
+                        disabled={faceCapturing || submitting}
+                      >
+                        <ScanFace size={17} />
+                        Open Camera
+                      </button>
+                    )}
 
-                      {faceCapturing
-                        ? "Checking Face..."
-                        : faceCaptured
-                          ? "Face Captured ✓"
-                          : "Capture Face"}
-                    </button>
+                    {cameraStream && !capturedImage && (
+                      <>
+                        <button
+                          type="button"
+                          className="primary-btn"
+                          onClick={handleFaceEnrollment}
+                          disabled={faceCapturing || submitting}
+                        >
+                          <ScanFace size={17} />
+                          {faceCapturing
+                            ? "Capturing..."
+                            : "Capture Face"}
+                        </button>
 
-                    <span
-                      style={{
-                        fontSize: "13px",
-                        color: faceCaptured ? "#16a34a" : "#6b7280",
-                      }}
-                    >
-                      {faceCaptured
-                        ? "Exactly one face detected"
-                        : "No face captured"}
-                    </span>
+                        <button
+                          type="button"
+                          className="secondary-btn"
+                          onClick={stopFaceCamera}
+                          disabled={faceCapturing || submitting}
+                        >
+                          Close Camera
+                        </button>
+                      </>
+                    )}
+
+                    {capturedImage && (
+                      <button
+                        type="button"
+                        className="secondary-btn"
+                        onClick={() => {
+                          setCapturedImage("");
+                          setFaceCaptured(false);
+                          setFaceTemplate([]);
+                          startFaceCamera();
+                        }}
+                        disabled={submitting}
+                      >
+                        Retake
+                      </button>
+                    )}
                   </div>
+
                 </div>
-              </div>
 
-              <div className="info-box">
-                <Fingerprint
-                  size={18}
-                />
-
-                <span>
-                  RFID, fingerprint and
-                  face credentials are
-                  stored separately from
-                  personal voter data.
-                </span>
-              </div>
-
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  className="secondary-btn"
-                  onClick={() =>
-                    setShowRegister(
-                      false
-                    )
-                  }
-                  disabled={
-                    submitting
-                  }
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  className="primary-btn"
-                  disabled={
-                    submitting
-                  }
-                >
-                  <UserPlus
-                    size={17}
+                <div className="info-box">
+                  <Fingerprint
+                    size={18}
                   />
 
-                  {submitting
-                    ? "Registering..."
-                    : "Register Voter"}
-                </button>
+                  <span>
+                    RFID, fingerprint and
+                    face credentials are
+                    stored separately from
+                    personal voter data.
+                  </span>
+                </div>
+
+                <div className="modal-actions">
+                  <button
+                    type="button"
+                    className="secondary-btn"
+                    onClick={() => {
+
+                      stopFaceCamera();
+                      setFaceCaptured(false);
+                      setFaceTemplate([]);
+                      setCapturedImage("");
+                      setShowRegister(false);
+
+                    }}
+                    disabled={
+                      submitting
+                    }
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="primary-btn"
+                    disabled={
+                      submitting
+                    }
+                  >
+                    <UserPlus
+                      size={17}
+                    />
+
+                    {submitting
+                      ? "Registering..."
+                      : "Register Voter"}
+                  </button>
+                </div>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+          </div >
+        </div >
+      )
+      }
 
       {/* =====================================================
           EDIT VOTER
           ===================================================== */}
 
-      {showEdit &&
+      {
+        showEdit &&
         selectedVoter && (
           <div className="modal-backdrop">
             <div className="modal">
@@ -1726,7 +1942,8 @@ export default function Voters() {
               </form>
             </div>
           </div>
-        )}
+        )
+      }
     </>
   );
 }

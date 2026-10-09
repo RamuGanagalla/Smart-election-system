@@ -158,11 +158,16 @@ const registerVoter = async (req, res) => {
       // ------------------------------------------------
       // Create voter credentials
       // ------------------------------------------------
+      let sanitizedFaceTemplate = [];
+      if (Array.isArray(faceTemplate) && faceTemplate.length === 128) {
+        sanitizedFaceTemplate = faceTemplate.map((n) => Number(n));
+      }
+
       await VoterCredential.create({
         voterId,
         rfidUid,
         fingerprintTemplate: fingerprintTemplate || null,
-        faceTemplate: faceTemplate || null,
+        faceTemplate: sanitizedFaceTemplate,
       });
 
       // ------------------------------------------------
@@ -228,11 +233,23 @@ const getVoters = async (req, res) => {
 
     const voters = await Promise.all(
       profiles.map(async (profile) => {
-        // Get credentials
-        const credentials =
+        // Get credentials (protect raw biometric vectors)
+        const rawCredentials =
           await VoterCredential.findOne({
             voterId: profile.voterId,
           }).lean();
+
+        let credentials = null;
+        if (rawCredentials) {
+          const hasFace =
+            Array.isArray(rawCredentials.faceTemplate) &&
+            rawCredentials.faceTemplate.length === 128;
+          credentials = {
+            ...rawCredentials,
+            // Expose enrollment status flag, never the raw 128-float biometric vector
+            faceTemplate: hasFace ? true : null,
+          };
+        }
 
         // Get voting status for all elections
         const statuses =
@@ -375,13 +392,19 @@ const updateVoter = async (req, res) => {
     await voter.save();
 
     // Update credentials
+    const credentialUpdate = {
+      rfidUid,
+    };
+    if (fingerprintTemplate !== undefined) {
+      credentialUpdate.fingerprintTemplate = fingerprintTemplate || null;
+    }
+    if (faceTemplate !== undefined && Array.isArray(faceTemplate) && faceTemplate.length === 128) {
+      credentialUpdate.faceTemplate = faceTemplate.map((n) => Number(n));
+    }
+
     await VoterCredential.findOneAndUpdate(
       { voterId },
-      {
-        rfidUid,
-        fingerprintTemplate: fingerprintTemplate || null,
-        faceTemplate: faceTemplate || null,
-      },
+      credentialUpdate,
       {
         new: true,
       }
@@ -530,7 +553,7 @@ const verifyRFID = async (req, res) => {
     if (voterStatus.hasVoted) {
       return res.status(403).json({
         success: false,
-        message: "This voter has already cast their vote",
+        message: `This voter named ${profile.name} has already cast their vote`,
       });
     }
 

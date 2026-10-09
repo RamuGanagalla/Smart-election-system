@@ -74,7 +74,6 @@ export default function Layout() {
             <h2>{current?.label || "Dashboard"}</h2>
           </div>
           <div className="topbar-actions">
-            <div className="top-search"><Search size={17}/><input placeholder="Search..." /></div>
             <div className="system-status"><span className="online-dot" /> System Online</div>
             <div className="admin-profile">
               <div className="avatar">{admin?.name?.charAt(0) || "A"}</div>
